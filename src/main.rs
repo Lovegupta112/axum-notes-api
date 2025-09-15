@@ -7,8 +7,7 @@ use axum::{
 use chrono::{Local, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
-use core::panic;
-use std::sync::{Arc, RwLock};
+use std::{panic, sync::{Arc, RwLock}};
 
 #[derive(Serialize, Deserialize, Debug)]
 struct Note {
