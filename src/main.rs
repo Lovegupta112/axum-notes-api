@@ -1,13 +1,17 @@
 use axum::{
     Router,
     extract::{Json, Path, State},
+    http::StatusCode,
     response,
     routing::{delete, get, post, put},
 };
-use chrono::{Local, Utc};
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
-use std::{panic, sync::{Arc, RwLock}};
+use std::{
+    panic,
+    sync::{Arc, RwLock},
+};
 
 #[derive(Serialize, Deserialize, Debug)]
 struct Note {
@@ -49,36 +53,50 @@ async fn server_health() -> &'static str {
     println!("Server is healthy..");
     "Server is Healthy.."
 }
+
 async fn fetch_notes(State(state): State<Arc<RwLock<AppState>>>) -> Json<Value> {
     println!("fetch notes: {:?}", state);
     let data = &*state.read().unwrap();
     response::Json(json!({"data":data,"message":"all notes fetched Successfull."}))
 }
-async fn add_note(State(state): State<Arc<RwLock<AppState>>>, Json(payload): Json<Note>) -> String {
+async fn add_note(
+    State(state): State<Arc<RwLock<AppState>>>,
+    Json(payload): Json<Note>,
+) -> Result<(StatusCode, String), (StatusCode, String)> {
     let mut app_state = state.write().unwrap();
     let mut new_note = payload;
     let new_note_id: usize = app_state.notes.len();
     new_note.id = Some(new_note_id);
     new_note.created_at = Some(Utc::now().to_string());
     app_state.notes.push(new_note);
-    "Successfully added !".to_string()
+    //"Successfully added !".to_string()
+    Ok((StatusCode::CREATED, "Successfully added !".to_string()))
 }
-async fn update_note(State(state): State<Arc<RwLock<AppState>>>, Json(data): Json<Note>) -> String {
+async fn update_note(
+    State(state): State<Arc<RwLock<AppState>>>,
+    Json(data): Json<Note>,
+) -> Result<(StatusCode, String), (StatusCode, String)> {
     let mut app_state = state.write().unwrap();
 
     if data.id.is_none() {
-        panic!("Note id is required..");
+        //panic!("Note id is required..");
+        return Err((StatusCode::BAD_REQUEST, "Note id is equired..".to_string()));
     }
     let updated_note_id: usize = data.id.unwrap();
-    
+
     if data.author.ne(&app_state.notes[updated_note_id].author) {
-       panic!("Author should be same..");
+        //panic!("Author should be same..");
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "Author should be same..".to_string(),
+        ));
     }
 
     app_state.notes[updated_note_id].title = data.title;
     app_state.notes[updated_note_id].updated_at = Some(Utc::now().to_string());
 
-    "Note updated successfully.".to_string()
+    //    "Note updated successfully.".to_string()
+    Ok((StatusCode::OK, "Note updated successfully.".to_string()))
 }
 async fn delete_note(State(state): State<Arc<RwLock<AppState>>>, Path(id): Path<usize>) -> String {
     let mut app_state = state.write().unwrap();
